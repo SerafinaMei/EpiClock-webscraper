@@ -78,39 +78,9 @@ df_filtered = df_filtered.rename(columns={
     "mean_absolute_deviation_(mad)_with_chronological_age": "MAD (Chronological Age)"
 })
 
-st.write("Filtered Rows:", df_filtered.shape[0])  # Debugging check
 
-# Display full table with all columns
 if not df_filtered.empty:
     st.dataframe(df_filtered, use_container_width=True)
-
-    # New Scatter Plot to Show All Information**
-    df_chart = df_filtered.copy()
-
-    # chart = (
-    #     alt.Chart(df_chart)
-    #     .mark_circle(size=80)
-    #     .encode(
-    #         x=alt.X("first_published_in:N", title="Year Published"),
-    #         y=alt.Y("#features:Q", title="Number of Features"),
-    #         color="response_variable:N",
-    #         tooltip=[
-    #             alt.Tooltip("name:N", title="Clock Name"),
-    #             alt.Tooltip("tissue:N", title="Tissue Type"),
-    #             alt.Tooltip("programme:N", title="Programme"),
-    #             alt.Tooltip("method:N", title="Method"),
-    #             alt.Tooltip("response_variable:N", title="Response Variable"),
-    #             alt.Tooltip("#features:Q", title="Feature Count"),
-    #             alt.Tooltip("special:N", title="Special Feature"),
-    #             alt.Tooltip("web_links:N", title="Code Links"),
-    #             alt.Tooltip("correlation_coefficient_(r²)_with_chronological_age:Q", title="R²"),
-    #             alt.Tooltip("mean_absolute_deviation_(mad)_with_chronological_age:Q", title="MAD"),
-    #         ]
-    #     )
-    #     .properties(height=500, width=800, title="Epigenetic Clock Features Over Time")
-    # )
-
-    st.altair_chart(chart, use_container_width=True)
 
 else:
     st.warning("No matching data found. Try adjusting your filters!")
@@ -136,3 +106,5 @@ else:
 
 # in our review, show people how many clocks are out(and what have they been doing in common) 
 # there already and people should probably switch focus 
+
+# streamlit run streamlit_app.py --server.port 8501 --server.address 0.0.0.0 --server.enableCORS false --server.enableXsrfProtection false

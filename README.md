@@ -1,8 +1,8 @@
-# 🎬 Movies dataset template
+# EpiClock web scraper
 
-A simple Streamlit app showing movie data from [The Movie Database (TMDB)](https://www.kaggle.com/datasets/tmdb/tmdb-movie-metadata). 
+A simple Streamlit app showing epigenetic clock data from [PubMed]up to 2024. 
 
-[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://movies-dataset-template.streamlit.app/)
+*Template from streamlit_app
 
 ### How to run it on your own machine
 
