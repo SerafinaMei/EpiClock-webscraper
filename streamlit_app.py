@@ -249,21 +249,10 @@ def get_figures(clock_name):
 
     clock_name_lower = clock_name.strip().replace(" ", "_").lower()  # Normalize clock name
 
-    # Ensure folder exists
-    if not os.path.exists(FIGURE_FOLDER):
-        st.write("❌ Debug: Figures folder does not exist.")
-        return []
 
     # List all files in folder
     available_files = os.listdir(FIGURE_FOLDER)
 
-    # Debug: Print all filenames, checking for mismatches
-    st.write("✅ Debug: Available files in figures folder ->", available_files)
-
-    # Print direct filename comparison to see mismatches
-    for f in available_files:
-        st.write(f"🔍 Checking filename: {f} -> matches Hannum? {clock_name_lower in f.lower().replace(' ', '_')}")
-    
     # Improved filename matching logic
     matching_figures = [
         os.path.join(FIGURE_FOLDER, f)
@@ -271,19 +260,7 @@ def get_figures(clock_name):
         if clock_name_lower in f.lower().replace(" ", "_").strip()
     ]
 
-    # Debugging: Show matched files
-    if matching_figures:
-        st.write(f"✅ Debug: Figures Matched for {clock_name} ->", matching_figures)
-    else:
-        st.write(f"❌ Debug: No figures matched for {clock_name}. Try renaming files!")
-
     return matching_figures
-
-# if "selected_clock" in st.session_state:
-#     st.write(f"✅ Debug: Current selected clock in session_state -> {st.session_state.selected_clock}")
-# else:
-#     st.write("❌ Debug: `selected_clock` is missing from session_state!")
-
 
 
 
@@ -293,19 +270,12 @@ if isinstance(selected_rows, list) and len(selected_rows) > 0:
     selected_rows = pd.DataFrame(selected_rows)  # Convert to DataFrame explicitly
 
 if isinstance(selected_rows, pd.DataFrame) and not selected_rows.empty:
-    st.write("✅ Debug: Selected Row Data (as DataFrame) ->", selected_rows)  # Print full selected row
-
+    
     # Convert first row to dictionary
     selected_dict = selected_rows.iloc[0].to_dict()
 
-    # Print available keys
-    st.write("✅ Debug: Available Keys in Selected Row ->", selected_dict.keys())
-
     # Extract clock name
     clock_name = selected_dict.get("Clock Name", "❌ NOT FOUND").strip()
-
-    # Debug print clock name
-    st.write("✅ Debug: Extracted Clock Name ->", clock_name)
 
     # Ensure session state exists
     if "selected_clock" not in st.session_state:
@@ -314,16 +284,9 @@ if isinstance(selected_rows, pd.DataFrame) and not selected_rows.empty:
     # Store in session state and debug check
     if clock_name != "❌ NOT FOUND":
         st.session_state.selected_clock = clock_name
-        st.write(f"✅ Debug: `selected_clock` just before rerun -> {st.session_state.selected_clock}")  # Print before rerun
         st.rerun()
     else:
         st.write("❌ Debug: Could not extract a valid Clock Name.")
-
-# **Debugging `st.session_state.selected_clock`**
-if "selected_clock" in st.session_state:
-    st.write(f"✅ Debug: Current selected clock in session_state -> {st.session_state.selected_clock}")
-else:
-    st.write("❌ Debug: `selected_clock` is missing from session_state!")
 
 # Ensure figures are displayed **only if selected_clock exists**
 if st.session_state.selected_clock:
@@ -336,9 +299,23 @@ if st.session_state.selected_clock:
     if figure_paths:
         for fig_path in figure_paths:
             st.image(fig_path, caption=os.path.basename(fig_path))
+        st.write(
+        """
+
+        **1. Variance Inflation Factor (VIF) Plot**  
+        This plot quantifies multicollinearity in the regression model by measuring how much the variance of CpG coefficient estimates is inflated due to correlation with other CpGs. A higher VIF indicates stronger collinearity among CpGs in the model.  
+
+        **2. Trend Consistency Plot**  
+        This evaluates the proportion of CpGs whose correlation with age aligns with the sign of their assigned coefficient in the model. As expected, CpGs positively correlated with age should contribute positively to the predicted age, vice versa.
+
+        **3. Predicted Age in Arthritis (Healthy vs. Disease)**  
+        This plot compares the predicted age for individuals with and without arthritis. Note that some clocks may have less accurate predictions because the arthritis dataset does not contain all CpGs present in the original model.  
+        """
+    )
     else:
         st.warning("No figures available for this clock.")
-
+    
+    
 
 # previous seperate tab
 # import streamlit as st
