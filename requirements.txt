@@ -1,8 +1,12 @@
 st-aggrid
 streamlit
+<<<<<<< HEAD
 pandas
 openpyxl
 streamlit-aggrid
 beautifulsoup4
 requests
 pillow
+=======
+streamlit-aggrid==0.3.4.post3
+>>>>>>> 5d720b3 (Fixed st-aggrid installation issue)
