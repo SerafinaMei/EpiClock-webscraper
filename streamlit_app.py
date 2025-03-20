@@ -1,7 +1,15 @@
 import os
-os.system("pip install --no-cache-dir streamlit-aggrid==1.1.0")
+import sys
 
+# Force install streamlit-aggrid and add to system path
+os.system("pip install --no-cache-dir --force-reinstall streamlit-aggrid==1.1.0")
+
+# Manually append site-packages to Python path
+sys.path.append("/home/appuser/.local/lib/python3.11/site-packages")
+
+# Now import AgGrid
 from streamlit_aggrid import AgGrid, GridOptionsBuilder
+
 
 # streamlit run test_version.py --server.enableCORS false --server.enableXsrfProtection false
 # # year bug (2,020) - fixed
