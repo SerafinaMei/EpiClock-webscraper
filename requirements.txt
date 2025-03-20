@@ -1,1 +1,8 @@
+st-aggrid
 streamlit
+pandas
+openpyxl
+st-aggrid
+beautifulsoup4
+requests
+pillow
