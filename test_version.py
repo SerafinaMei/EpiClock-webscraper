@@ -1,3 +1,4 @@
+# run command in 1/2 window: streamlit run test_version.py --server.enableCORS false --server.enableXsrfProtection false
 # # # # V0 origrinal
 # # # import streamlit as st
 # # # import pandas as pd
@@ -361,9 +362,7 @@ with col2:
 df_filtered = df[(df["first_published_in"].between(years[0], years[1])) & 
                  (df["tissue"].apply(lambda x: "whole blood" in x if "Whole Blood" in tissue_selected else x not in ["", "whole blood"]))]
 
-# Display Initial Table with Limited Columns
-initial_columns = ["name", "first_published_in", "#features", "method", "tissue"]
-df_display = df_filtered[initial_columns]
+df_display = df_filtered
 df_display.insert(0, "", ["🔍"] * len(df_display))
 
 st.write("### Epigenetic Clocks Overview")
@@ -397,19 +396,71 @@ if isinstance(selected_rows, pd.DataFrame) and not selected_rows.empty:
     st.dataframe(df_selected, use_container_width=True)
     
     # Show Figures
+    # def get_figures(clock_name):
+    #     if not clock_name:
+    #         return []
+    #     clock_name_lower = clock_name.strip().replace(" ", "_").lower()
+    #     available_files = os.listdir("test_figures")
+    #     return [os.path.join("test_figures", f) for f in available_files if clock_name_lower in f.lower().replace(" ", "_")]
+
+    # Function to get figures from the clock-specific folder
     def get_figures(clock_name):
         if not clock_name:
-            return []
-        clock_name_lower = clock_name.strip().replace(" ", "_").lower()
-        available_files = os.listdir("test_figures")
-        return [os.path.join("test_figures", f) for f in available_files if clock_name_lower in f.lower().replace(" ", "_")]
-    
-    figure_paths = get_figures(selected_clock)
-    if figure_paths:
-        st.subheader("📊 Figures")
-        cols = st.columns(2)
-        for i, fig_path in enumerate(figure_paths):
-            image = Image.open(fig_path)
-            cols[i % 2].image(image, caption=os.path.basename(fig_path), use_container_width=True)
-    else:
-        st.warning("No figures available for this clock.")
+            st.error("Clock name is empty or None.")
+            return [], ""
+
+        # Get all existing folder names inside test_figures
+        figure_base_path = "test_figures"
+        available_folders = os.listdir(figure_base_path)
+
+        # Find a folder with the exact match for clock_name (case-sensitive)
+        matching_folders = [folder for folder in available_folders if folder == clock_name]
+
+        if not matching_folders:
+            st.warning(f"⚠️ No matching folder found for: {clock_name}")
+            return [], ""
+
+        # Use the first match (there should only be one)
+        clock_folder = os.path.join(figure_base_path, matching_folders[0])
+
+        # Get the figures inside the folder
+        figure_files = sorted(os.listdir(clock_folder))
+
+        # Separate VIF-related figures from others
+        vif_figures = [f for f in figure_files if "vif" in f.lower()]
+        other_figures = [f for f in figure_files if "vif" not in f.lower()]
+
+        return vif_figures + other_figures, clock_folder
+
+    # Show Figures for Selected Clock
+    if isinstance(selected_rows, pd.DataFrame) and not selected_rows.empty:
+        selected_clock = selected_rows.iloc[0]["name"]
+        st.subheader(f"📊 Figures for {selected_clock}")
+        
+        figure_files, figure_folder = get_figures(selected_clock)
+        
+        if figure_files:
+            # Display explanation for VIF if relevant files exist
+            vif_figs = [f for f in figure_files if "vif" in f.lower()]
+            if vif_figs:
+                st.markdown(
+                    """
+                    **Variance Inflation Factor (VIF)**
+                    
+                    VIF is a measure of multicollinearity among predictor variables. 
+                    - A **VIF above 5** suggests moderate collinearity.
+                    - A **VIF above 10** indicates significant collinearity.
+                    - A **VIF above 20** is highly correlated with other features and may impact model performance.
+                    
+                    The proportion values show the percentage of features exceeding these thresholds.
+                    """
+                )
+            
+            cols = st.columns(2)
+            
+            for i, fig_file in enumerate(figure_files):
+                fig_path = os.path.join(figure_folder, fig_file)
+                image = Image.open(fig_path)
+                cols[i % 2].image(image, caption=fig_file, use_container_width=True)
+        else:
+            st.warning("No figures available for this clock.")
