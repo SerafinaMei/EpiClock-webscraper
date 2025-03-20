@@ -1,3 +1,7 @@
+import os
+os.system("pip install --no-cache-dir streamlit-aggrid==1.1.0")
+
+from streamlit_aggrid import AgGrid, GridOptionsBuilder
 
 # streamlit run test_version.py --server.enableCORS false --server.enableXsrfProtection false
 # # year bug (2,020) - fixed
