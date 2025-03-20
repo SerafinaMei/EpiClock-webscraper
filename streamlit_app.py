@@ -374,7 +374,7 @@
 import streamlit as st
 import pandas as pd
 import os
-from st_aggrid import AgGrid, GridOptionsBuilder
+from streamlit_aggrid import AgGrid, GridOptionsBuilder
 from PIL import Image
 import requests
 from bs4 import BeautifulSoup
