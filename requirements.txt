@@ -2,7 +2,7 @@ st-aggrid
 streamlit
 pandas
 openpyxl
-st-aggrid
+streamlit-aggrid
 beautifulsoup4
 requests
 pillow
