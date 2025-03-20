@@ -1,7 +1,8 @@
 streamlit
 pandas
 openpyxl
-streamlit-aggrid==0.3.4.post3
+streamlit-aggrid==1.1.0
 beautifulsoup4
 requests
 pillow
+--no-cache-dir
