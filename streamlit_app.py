@@ -384,42 +384,73 @@ st.set_page_config(page_title="Epigenetic Clock Database", page_icon="🕑", lay
 # Function to load and clean data
 @st.cache_data
 def load_data():
-    df = pd.read_excel("data/EpiClock_test.xlsx", sheet_name='Sheet1', engine="openpyxl")
-    df.columns = df.columns.str.strip().str.lower().str.replace(" ", "_")
-    df["first_published_in"] = df["first_published_in"].astype(str).str.replace(",", "").astype(float).astype("Int64")
-    df["#features"] = pd.to_numeric(df["#features"], errors="coerce").fillna(0).astype(int)
+    df = pd.read_excel("data/EpiClock_sheet.xlsx", sheet_name='table', engine="openpyxl")
+
+    # Standardizing column names
+    df.columns = df.columns.str.strip().str.lower().str.replace(" ", "_").str.replace("(", "").str.replace(")", "")
+
+    # Convert 'first_published_in' to numeric while handling errors
+    df["first_published_in"] = pd.to_numeric(df["first_published_in"], errors="coerce").fillna(0).astype(int)
+
+    # Remove non-numeric characters from '#features_cpgs' and convert to int
+    df["#features_cpgs"] = df["#features_cpgs"].astype(str).str.replace(r"\D", "", regex=True)
+    df["#features_cpgs"] = pd.to_numeric(df["#features_cpgs"], errors="coerce").fillna(0).astype(int)
+
     df["tissue"] = df["tissue"].fillna("").str.strip().str.lower()
     df["response_variable"] = df["response_variable"].fillna("").str.strip().str.lower()
     df["response_variable"] = df["response_variable"].replace("varies?", "unknown")
+
     return df
 
 df = load_data()
 
-# UI Layout Optimization
-col1, col2 = st.columns([2, 1])
+# Define available options for selection
+response_options = ["Chronological Age", "Mitotic Age (Proxy for cumulative stem cell divisions)", 
+                    "Biomarker Age", "Telomere Length", "Others"]
+tissue_options = ["Whole Blood Only", "Multi-tissue", "Others"]
+method_options = ["Elastic Net", "Others"]  # Users can now multi-select
 
-with col1:
-    response_var = st.multiselect("Select Response Variable", ["Chronological Age", "Mitotic Age", "Biomarker Age"], ["Chronological Age"])
-    tissue_selected = st.multiselect("Select Tissue Type", ["Whole Blood", "Others"], ["Whole Blood"])
+# User selection filters
+response_var = st.multiselect("Select Response Variable", response_options, ["Chronological Age"])
+tissue_selected = st.multiselect("Select Tissue Type", tissue_options, ["Whole Blood Only"])
+method_selected = st.multiselect("Select Method", method_options, method_options)  # Default: All methods
 
-with col2:
-    min_year = int(df["first_published_in"].min()) if not df["first_published_in"].isna().all() else 2010
-    max_year = int(df["first_published_in"].max()) if not df["first_published_in"].isna().all() else 2024
-    years = st.slider("Years", min_year, max_year, (2020, 2024))
+# Determine min and max years
+min_year = int(df["first_published_in"].min()) if not df["first_published_in"].isna().all() else 2010
+max_year = int(df["first_published_in"].max()) if not df["first_published_in"].isna().all() else 2024
+years = st.slider("Years", min_year, max_year, (2020, 2024))
 
 # Apply filters
-df_filtered = df[
-    (df["first_published_in"].between(years[0], years[1])) & 
-    (df["tissue"].apply(lambda x: "whole blood" in x if "Whole Blood" in tissue_selected else x not in ["", "whole blood"]))
-]
+df_filtered = df[df["first_published_in"].between(years[0], years[1])]
 
-df_display = df_filtered
-df_display.insert(0, "", ["🔍"] * len(df_display))
+# Apply **Tissue Type** Filter
+if "Whole Blood Only" in tissue_selected:
+    df_filtered = df_filtered[df_filtered["tissue"].str.lower() == "whole blood"]
+elif "Multi-tissue" in tissue_selected:
+    df_filtered = df_filtered[df_filtered["tissue"] != "whole blood"]  # Excludes whole blood-only models
+
+# Apply **Method Filter**
+if "Elastic Net" in method_selected and "Others" not in method_selected:
+    df_filtered = df_filtered[df_filtered["method"].str.contains("elastic net", case=False, na=False)]
+elif "Others" in method_selected and "Elastic Net" not in method_selected:
+    df_filtered = df_filtered[~df_filtered["method"].str.contains("elastic net", case=False, na=False)]  # Excludes Elastic Net
+
+df_display = df_filtered.rename(columns={
+    "Name": "Clock Name",
+    "Tissue": "Tissue Type",
+    "Method": "Regression Method",
+    "Response Variable": "Target Variable",
+    "#Features (CpGs)": "Number of Features",
+    "First Published In": "Year Published",
+    "Special": "Special Notes",
+    "Model Accessible Via": "Model Link",
+    "Link": "Reference"
+})
+
 
 st.write("### Epigenetic Clocks Overview")
 gb = GridOptionsBuilder.from_dataframe(df_display)
 gb.configure_selection("single", use_checkbox=True, pre_selected_rows=[0])
-gb.configure_grid_options(dom_layout='normal')
 grid_options = gb.build()
 grid_response = AgGrid(df_display, gridOptions=grid_options, theme="streamlit")
 
