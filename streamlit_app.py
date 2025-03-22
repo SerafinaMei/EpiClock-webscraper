@@ -1,5 +1,8 @@
+<<<<<<< HEAD
 
 
+=======
+>>>>>>> 8a4a5f3 (Fixed feature count formatting (no decimals) and removed commas from Year Published)
 
 # streamlit run test_version.py --server.enableCORS false --server.enableXsrfProtection false
 # # year bug (2,020) - fixed
@@ -670,8 +673,6 @@
 
 # else:
 #     st.warning("No clocks available with the selected filters.")
-
-
 import streamlit as st
 import pandas as pd
 import os
@@ -715,6 +716,27 @@ def load_data():
     return df
 
 df = load_data()
+
+# Function to get figures for selected clock
+def get_figures(clock_name):
+    if not clock_name:
+        return [], ""
+
+    figure_base_path = "test_figures"
+    available_folders = os.listdir(figure_base_path)
+
+    matching_folders = [folder for folder in available_folders if folder == clock_name]
+
+    if not matching_folders:
+        return [], ""
+
+    clock_folder = os.path.join(figure_base_path, matching_folders[0])
+    figure_files = sorted(os.listdir(clock_folder))
+
+    vif_figures = [f for f in figure_files if "vif" in f.lower()]
+    other_figures = [f for f in figure_files if "vif" not in f.lower()]
+
+    return vif_figures + other_figures, clock_folder
 
 # Define available options for selection
 response_options = ["Chronological Age", "Mitotic Age (Proxy for cumulative stem cell divisions)", 
@@ -800,6 +822,35 @@ if clock_names:
     table_html += "</table>"
 
     st.markdown(table_html, unsafe_allow_html=True)
+
+    # Show Figures for Selected Clock
+    st.subheader(f"📊 Figures for {selected_clock}")
+
+    figure_files, figure_folder = get_figures(selected_clock)
+
+    if figure_files:
+        vif_figs = [f for f in figure_files if "vif" in f.lower()]
+        if vif_figs:
+            st.markdown(
+                """
+                **Variance Inflation Factor (VIF)**
+                
+                - **VIF > 5** → Moderate collinearity.
+                - **VIF > 10** → Strong collinearity.
+                - **VIF > 20** → Very high correlation affecting model performance.
+                
+                The proportions indicate the percentage of features exceeding these thresholds.
+                """
+            )
+
+        # Display each figure
+        for fig_file in figure_files:
+            fig_path = os.path.join(figure_folder, fig_file)
+            image = Image.open(fig_path)
+            st.image(image, caption=fig_file, use_container_width=True)
+
+    else:
+        st.warning("⚠️ No figures available for this clock yet.")
 
 else:
     st.warning("No clocks available with the selected filters.")
