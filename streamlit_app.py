@@ -383,15 +383,323 @@ from streamlit_aggrid import AgGrid, GridOptionsBuilder
 #         )
 #     else:
 #         st.warning("No figures available for this clock.")
+
+
+
+
+
+# 03212025 version
+# import streamlit as st
+# import pandas as pd
+# import os
+# from st_aggrid import AgGrid, GridOptionsBuilder
+# from PIL import Image
+# import requests
+# from bs4 import BeautifulSoup
+
+# st.set_page_config(page_title="Epigenetic Clock Database", page_icon="🕑", layout="wide")
+
+# # Function to load and clean data
+# @st.cache_data
+# def load_data():
+#     df = pd.read_excel("data/EpiClock_sheet.xlsx", sheet_name='table', engine="openpyxl")
+
+#     # Standardizing column names
+#     df.columns = df.columns.str.strip().str.lower().str.replace(" ", "_").str.replace("(", "").str.replace(")", "")
+
+#     # Convert 'first_published_in' to numeric while handling errors
+#     df["first_published_in"] = pd.to_numeric(df["first_published_in"], errors="coerce").fillna(0).astype(int)
+
+#     # Remove non-numeric characters from '#features_cpgs' and convert to int
+#     df["#features_cpgs"] = df["#features_cpgs"].astype(str).str.replace(r"\D", "", regex=True)
+#     df["#features_cpgs"] = pd.to_numeric(df["#features_cpgs"], errors="coerce").fillna(0).astype(int)
+
+#     df["tissue"] = df["tissue"].fillna("").str.strip().str.lower()
+#     df["response_variable"] = df["response_variable"].fillna("").str.strip().str.lower()
+#     df["response_variable"] = df["response_variable"].replace("varies?", "unknown")
+
+#     return df
+
+# df = load_data()
+
+# # Define available options for selection
+# response_options = ["Chronological Age", "Mitotic Age (Proxy for cumulative stem cell divisions)", 
+#                     "Biomarker Age", "Telomere Length", "Others"]
+# tissue_options = ["Whole Blood Only", "Multi-tissue", "Others"]
+# method_options = ["Elastic Net", "Others"]  # Users can now multi-select
+
+# # User selection filters
+# response_var = st.multiselect("Select Response Variable", response_options, ["Chronological Age"])
+# tissue_selected = st.multiselect("Select Tissue Type", tissue_options, ["Whole Blood Only"])
+# method_selected = st.multiselect("Select Method", method_options, method_options)  # Default: All methods
+
+# # Determine min and max years
+# min_year = int(df["first_published_in"].min()) if not df["first_published_in"].isna().all() else 2010
+# max_year = int(df["first_published_in"].max()) if not df["first_published_in"].isna().all() else 2024
+# years = st.slider("Years", min_year, max_year, (2020, 2024))
+
+# # Apply filters
+# df_filtered = df[df["first_published_in"].between(years[0], years[1])]
+
+# # Apply **Tissue Type** Filter
+# if "Whole Blood Only" in tissue_selected:
+#     df_filtered = df_filtered[df_filtered["tissue"].str.lower() == "whole blood"]
+# elif "Multi-tissue" in tissue_selected:
+#     df_filtered = df_filtered[df_filtered["tissue"] != "whole blood"]  # Excludes whole blood-only models
+
+# # Apply **Method Filter**
+# if "Elastic Net" in method_selected and "Others" not in method_selected:
+#     df_filtered = df_filtered[df_filtered["method"].str.contains("elastic net", case=False, na=False)]
+# elif "Others" in method_selected and "Elastic Net" not in method_selected:
+#     df_filtered = df_filtered[~df_filtered["method"].str.contains("elastic net", case=False, na=False)]  # Excludes Elastic Net
+
+# df_display = df_filtered.rename(columns={
+#     "Name": "Clock Name",
+#     "Tissue": "Tissue Type",
+#     "Method": "Regression Method",
+#     "Response Variable": "Target Variable",
+#     "#Features (CpGs)": "Number of Features",
+#     "First Published In": "Year Published",
+#     "Special": "Special Notes",
+#     "Model Accessible Via": "Model Link",
+#     "Link": "Reference"
+# })
+
+
+# st.write("### Epigenetic Clocks Overview")
+# gb = GridOptionsBuilder.from_dataframe(df_display)
+# gb.configure_selection("single", use_checkbox=True, pre_selected_rows=[0])
+# grid_options = gb.build()
+# grid_response = AgGrid(df_display, gridOptions=grid_options, theme="streamlit")
+
+# # Function to get figures
+# def get_figures(clock_name):
+#     if not clock_name:
+#         return [], ""
+
+#     figure_base_path = "test_figures"
+#     available_folders = os.listdir(figure_base_path)
+
+#     matching_folders = [folder for folder in available_folders if folder == clock_name]
+
+#     if not matching_folders:
+#         return [], ""
+
+#     clock_folder = os.path.join(figure_base_path, matching_folders[0])
+#     figure_files = sorted(os.listdir(clock_folder))
+
+#     vif_figures = [f for f in figure_files if "vif" in f.lower()]
+#     other_figures = [f for f in figure_files if "vif" not in f.lower()]
+
+#     return vif_figures + other_figures, clock_folder
+
+# # Function to extract an abstract from a research paper link
+# def extract_abstract(paper_link):
+#     try:
+#         response = requests.get(paper_link, timeout=5)
+#         response.raise_for_status()
+
+#         soup = BeautifulSoup(response.text, 'html.parser')
+#         paragraphs = soup.find_all('p')
+
+#         abstract_text = ""
+#         for para in paragraphs[:6]:  # Extract first 6-7 sentences
+#             abstract_text += para.get_text() + " "
+
+#         return abstract_text.strip()
+#     except Exception:
+#         return "⚠️ Abstract preview not available."
+
+# # Show Detailed Info for Selected Clock
+# selected_rows = grid_response.get("selected_rows", [])
+# if isinstance(selected_rows, list) and len(selected_rows) > 0:
+#     selected_rows = pd.DataFrame(selected_rows)
+
+# if isinstance(selected_rows, pd.DataFrame) and not selected_rows.empty:
+#     selected_clock = selected_rows.iloc[0]["name"]
+#     st.subheader(f"📜 Detailed Information for {selected_clock}", anchor='details-section')
+
+#     st.markdown("""
+#         <script>
+#         setTimeout(function() {
+#             document.getElementById('details-section').scrollIntoView({behavior: 'smooth', block: 'center'});
+#         }, 500);
+#         </script>
+#         """, unsafe_allow_html=True)
+
+#     # Display full details for selected row
+#     df_selected = df_filtered[df_filtered["name"] == selected_clock].T.iloc[1:, :]
+#     df_selected.columns = [selected_clock]
+#     st.dataframe(df_selected, use_container_width=True)
+
+
+#     # Show Figures for Selected Clock
+#         # Show Figures for Selected Clock
+#     st.subheader(f"📊 Figures for {selected_clock}")
+
+#     figure_files, figure_folder = get_figures(selected_clock)
+
+#     if figure_files:
+#         vif_figs = [f for f in figure_files if "vif" in f.lower()]
+#         if vif_figs:
+#             st.markdown(
+#                 """
+#                 **Variance Inflation Factor (VIF)**
+                
+#                 - **VIF > 5** → Moderate collinearity.
+#                 - **VIF > 10** → Strong collinearity.
+#                 - **VIF > 20** → Very high correlation affecting model performance.
+                
+#                 The proportions indicate the percentage of features exceeding these thresholds.
+#                 """
+#             )
+
+#         # Display each figure in its own row for consistency
+#         for fig_file in figure_files:
+#             fig_path = os.path.join(figure_folder, fig_file)
+#             image = Image.open(fig_path)
+
+#             # Use full width for uniform display
+#             st.image(image, caption=fig_file, use_container_width=True)
+
+
+#     else:
+#         st.warning("⚠️ No figures available for this clock yet.")
+
+
+
+
+
+# # don't know why but also like aggrid
+# import streamlit as st
+# import pandas as pd
+# import os
+# from PIL import Image
+
+# st.set_page_config(page_title="Epigenetic Clock Database", page_icon="🕑", layout="wide")
+
+# # Function to load and clean data
+# @st.cache_data
+# def load_data():
+#     df = pd.read_excel("data/EpiClock_sheet.xlsx", sheet_name='table', engine="openpyxl")
+
+#     # Standardizing column names
+#     df.columns = df.columns.str.strip().str.lower().str.replace(" ", "_").str.replace("(", "").str.replace(")", "")
+
+#     # Convert 'first_published_in' to numeric while handling errors
+#     df["first_published_in"] = pd.to_numeric(df["first_published_in"], errors="coerce").fillna(0).astype(int)
+
+#     # Remove non-numeric characters from '#features_cpgs' and convert to int
+#     df["#features_cpgs"] = df["#features_cpgs"].astype(str).str.replace(r"\D", "", regex=True)
+#     df["#features_cpgs"] = pd.to_numeric(df["#features_cpgs"], errors="coerce").fillna(0).astype(int)
+
+#     df["tissue"] = df["tissue"].fillna("").str.strip().str.lower()
+#     df["response_variable"] = df["response_variable"].fillna("").str.strip().str.lower()
+#     df["response_variable"] = df["response_variable"].replace("varies?", "unknown")
+
+#     return df
+
+# df = load_data()
+
+# # Define available options for selection
+# response_options = ["Chronological Age", "Mitotic Age (Proxy for cumulative stem cell divisions)", 
+#                     "Biomarker Age", "Telomere Length", "Others"]
+# tissue_options = ["Whole Blood Only", "Multi-tissue", "Others"]
+# method_options = ["Elastic Net", "Others"]
+
+# # User selection filters
+# response_var = st.multiselect("Select Response Variable", response_options, ["Chronological Age"])
+# tissue_selected = st.multiselect("Select Tissue Type", tissue_options, ["Whole Blood Only"])
+# method_selected = st.multiselect("Select Method", method_options, method_options)
+
+# # Determine min and max years
+# min_year = int(df["first_published_in"].min()) if not df["first_published_in"].isna().all() else 2010
+# max_year = int(df["first_published_in"].max()) if not df["first_published_in"].isna().all() else 2024
+# years = st.slider("Years", min_year, max_year, (2020, 2024))
+
+# # Apply filters
+# df_filtered = df[df["first_published_in"].between(years[0], years[1])]
+
+# if "Whole Blood Only" in tissue_selected:
+#     df_filtered = df_filtered[df_filtered["tissue"].str.lower() == "whole blood"]
+# elif "Multi-tissue" in tissue_selected:
+#     df_filtered = df_filtered[df_filtered["tissue"] != "whole blood"]
+
+# if "Elastic Net" in method_selected and "Others" not in method_selected:
+#     df_filtered = df_filtered[df_filtered["method"].str.contains("elastic net", case=False, na=False)]
+# elif "Others" in method_selected and "Elastic Net" not in method_selected:
+#     df_filtered = df_filtered[~df_filtered["method"].str.contains("elastic net", case=False, na=False)]
+
+# df_display = df_filtered.rename(columns={
+#     "name": "Clock Name",
+#     "tissue": "Tissue Type",
+#     "method": "Regression Method",
+#     "response_variable": "Target Variable",
+#     "#features_cpgs": "Number of Features",
+#     "first_published_in": "Year Published",
+#     "special": "Special Notes",
+#     "model_accessible_via": "Model Link",
+#     "link": "Reference"
+# })
+
+# # Display dataframe
+# st.write("### Epigenetic Clocks Overview")
+# st.dataframe(df_display, height=400, use_container_width=True)
+
+# # **Radio button for selecting a row**
+# clock_names = df_display["Clock Name"].tolist()
+# if clock_names:
+#     selected_clock = st.radio("Select a clock:", clock_names, index=0)
+
+#     # Show Detailed Information
+#     st.subheader(f"📜 Detailed Information for {selected_clock}", anchor='details-section')
+
+#     # Extract selected row's details
+#     df_selected = df_display[df_display["Clock Name"] == selected_clock].drop(columns=["Clock Name"]).T
+#     df_selected.columns = ["Value"]
+#     df_selected.reset_index(inplace=True)
+#     df_selected.columns = ["Property", "Value"]
+
+#     # Convert into a proper **2-column table**
+#     details_table = df_selected.to_dict(orient="records")
+
+#     # Use Markdown to format as a 2-column table
+#     table_html = "<table style='width:100%; border-collapse: collapse;'>"
+#     for i in range(0, len(details_table), 2):
+#         table_html += "<tr>"
+#         for j in range(2):
+#             if i + j < len(details_table):
+#                 key = details_table[i + j]["Property"]
+#                 value = details_table[i + j]["Value"]
+#                 table_html += f"<td style='padding: 8px; border: 1px solid black;'><b>{key}</b></td>"
+#                 table_html += f"<td style='padding: 8px; border: 1px solid black;'>{value}</td>"
+#         table_html += "</tr>"
+#     table_html += "</table>"
+
+#     st.markdown(table_html, unsafe_allow_html=True)
+
+# else:
+#     st.warning("No clocks available with the selected filters.")
+
+
 import streamlit as st
 import pandas as pd
 import os
-from streamlit_aggrid import AgGrid, GridOptionsBuilder
 from PIL import Image
-import requests
-from bs4 import BeautifulSoup
 
 st.set_page_config(page_title="Epigenetic Clock Database", page_icon="🕑", layout="wide")
+st.title("🕰 Epigenetic Clock Database")
+
+st.write(
+    """
+    The Epigenetic Clock Database is a curated collection of various DNA methylation-based age predictors 
+    (also known as **epigenetic clocks**). These clocks estimate chronological age or biological age based on methylation patterns 
+    across different tissues, variables, and methodologies.
+
+    This interactive web app allows researchers to explore and compare epigenetic clocks 
+    based on their features, tissues studied, and statistical performance. All info is manually added, please contact _ for corrections, updates, or discussions.
+    """
+)
 
 # Function to load and clean data
 @st.cache_data
@@ -401,12 +709,14 @@ def load_data():
     # Standardizing column names
     df.columns = df.columns.str.strip().str.lower().str.replace(" ", "_").str.replace("(", "").str.replace(")", "")
 
-    # Convert 'first_published_in' to numeric while handling errors
+    # Convert 'first_published_in' to numeric while handling errors (Fix: No commas)
     df["first_published_in"] = pd.to_numeric(df["first_published_in"], errors="coerce").fillna(0).astype(int)
 
-    # Remove non-numeric characters from '#features_cpgs' and convert to int
+    # Remove non-numeric characters from '#features_cpgs' and convert to integer
     df["#features_cpgs"] = df["#features_cpgs"].astype(str).str.replace(r"\D", "", regex=True)
-    df["#features_cpgs"] = pd.to_numeric(df["#features_cpgs"], errors="coerce").fillna(0).astype(int)
+    
+    # ✅ Convert to Int64 (Ensures No Decimals, Keeps NaN)
+    df["#features_cpgs"] = pd.to_numeric(df["#features_cpgs"], errors="coerce").astype("Int64")
 
     df["tissue"] = df["tissue"].fillna("").str.strip().str.lower()
     df["response_variable"] = df["response_variable"].fillna("").str.strip().str.lower()
@@ -420,14 +730,14 @@ df = load_data()
 response_options = ["Chronological Age", "Mitotic Age (Proxy for cumulative stem cell divisions)", 
                     "Biomarker Age", "Telomere Length", "Others"]
 tissue_options = ["Whole Blood Only", "Multi-tissue", "Others"]
-method_options = ["Elastic Net", "Others"]  # Users can now multi-select
+method_options = ["Elastic Net", "Others"]
 
 # User selection filters
 response_var = st.multiselect("Select Response Variable", response_options, ["Chronological Age"])
 tissue_selected = st.multiselect("Select Tissue Type", tissue_options, ["Whole Blood Only"])
-method_selected = st.multiselect("Select Method", method_options, method_options)  # Default: All methods
+method_selected = st.multiselect("Select Method", method_options, method_options)
 
-# Determine min and max years
+# Determine min and max years (Fix: Remove comma formatting)
 min_year = int(df["first_published_in"].min()) if not df["first_published_in"].isna().all() else 2010
 max_year = int(df["first_published_in"].max()) if not df["first_published_in"].isna().all() else 2024
 years = st.slider("Years", min_year, max_year, (2020, 2024))
@@ -435,127 +745,71 @@ years = st.slider("Years", min_year, max_year, (2020, 2024))
 # Apply filters
 df_filtered = df[df["first_published_in"].between(years[0], years[1])]
 
-# Apply **Tissue Type** Filter
 if "Whole Blood Only" in tissue_selected:
     df_filtered = df_filtered[df_filtered["tissue"].str.lower() == "whole blood"]
 elif "Multi-tissue" in tissue_selected:
-    df_filtered = df_filtered[df_filtered["tissue"] != "whole blood"]  # Excludes whole blood-only models
+    df_filtered = df_filtered[df_filtered["tissue"] != "whole blood"]
 
-# Apply **Method Filter**
 if "Elastic Net" in method_selected and "Others" not in method_selected:
     df_filtered = df_filtered[df_filtered["method"].str.contains("elastic net", case=False, na=False)]
 elif "Others" in method_selected and "Elastic Net" not in method_selected:
-    df_filtered = df_filtered[~df_filtered["method"].str.contains("elastic net", case=False, na=False)]  # Excludes Elastic Net
+    df_filtered = df_filtered[~df_filtered["method"].str.contains("elastic net", case=False, na=False)]
+
+# Convert missing/0 feature counts to "Not Specified"
+df_filtered["#features_cpgs"] = df_filtered["#features_cpgs"].apply(
+    lambda x: "Not Specified" if pd.isna(x) or x == 0 else str(int(x))  # Ensure Integer Format
+)
 
 df_display = df_filtered.rename(columns={
-    "Name": "Clock Name",
-    "Tissue": "Tissue Type",
-    "Method": "Regression Method",
-    "Response Variable": "Target Variable",
-    "#Features (CpGs)": "Number of Features",
-    "First Published In": "Year Published",
-    "Special": "Special Notes",
-    "Model Accessible Via": "Model Link",
-    "Link": "Reference"
+    "name": "Clock Name",
+    "tissue": "Tissue Type",
+    "method": "Regression Method",
+    "response_variable": "Target Variable",
+    "#features_cpgs": "Number of Features",
+    "first_published_in": "Year Published",
+    "special": "Special Notes",
+    "model_accessible_via": "Model Link",
+    "link": "Reference"
 })
 
+# Ensure Year Published is displayed without commas
+df_display["Year Published"] = df_display["Year Published"].astype(str)
 
+# Display dataframe
 st.write("### Epigenetic Clocks Overview")
-gb = GridOptionsBuilder.from_dataframe(df_display)
-gb.configure_selection("single", use_checkbox=True, pre_selected_rows=[0])
-grid_options = gb.build()
-grid_response = AgGrid(df_display, gridOptions=grid_options, theme="streamlit")
+st.dataframe(df_display, height=400, use_container_width=True)
 
-# Function to get figures
-def get_figures(clock_name):
-    if not clock_name:
-        return [], ""
+# **Radio button for selecting a row**
+clock_names = df_display["Clock Name"].tolist()
+if clock_names:
+    selected_clock = st.radio("Select a clock:", clock_names, index=0)
 
-    figure_base_path = "test_figures"
-    available_folders = os.listdir(figure_base_path)
-
-    matching_folders = [folder for folder in available_folders if folder == clock_name]
-
-    if not matching_folders:
-        return [], ""
-
-    clock_folder = os.path.join(figure_base_path, matching_folders[0])
-    figure_files = sorted(os.listdir(clock_folder))
-
-    vif_figures = [f for f in figure_files if "vif" in f.lower()]
-    other_figures = [f for f in figure_files if "vif" not in f.lower()]
-
-    return vif_figures + other_figures, clock_folder
-
-# Function to extract an abstract from a research paper link
-def extract_abstract(paper_link):
-    try:
-        response = requests.get(paper_link, timeout=5)
-        response.raise_for_status()
-
-        soup = BeautifulSoup(response.text, 'html.parser')
-        paragraphs = soup.find_all('p')
-
-        abstract_text = ""
-        for para in paragraphs[:6]:  # Extract first 6-7 sentences
-            abstract_text += para.get_text() + " "
-
-        return abstract_text.strip()
-    except Exception:
-        return "⚠️ Abstract preview not available."
-
-# Show Detailed Info for Selected Clock
-selected_rows = grid_response.get("selected_rows", [])
-if isinstance(selected_rows, list) and len(selected_rows) > 0:
-    selected_rows = pd.DataFrame(selected_rows)
-
-if isinstance(selected_rows, pd.DataFrame) and not selected_rows.empty:
-    selected_clock = selected_rows.iloc[0]["name"]
+    # Show Detailed Information
     st.subheader(f"📜 Detailed Information for {selected_clock}", anchor='details-section')
 
-    st.markdown("""
-        <script>
-        setTimeout(function() {
-            document.getElementById('details-section').scrollIntoView({behavior: 'smooth', block: 'center'});
-        }, 500);
-        </script>
-        """, unsafe_allow_html=True)
+    # Extract selected row's details
+    df_selected = df_display[df_display["Clock Name"] == selected_clock].drop(columns=["Clock Name"]).T
+    df_selected.columns = ["Value"]
+    df_selected.reset_index(inplace=True)
+    df_selected.columns = ["Property", "Value"]
 
-    # Display full details for selected row
-    df_selected = df_filtered[df_filtered["name"] == selected_clock].T.iloc[1:, :]
-    df_selected.columns = [selected_clock]
-    st.dataframe(df_selected, use_container_width=True)
+    # Convert into a proper **2-column table**
+    details_table = df_selected.to_dict(orient="records")
 
+    # Use Markdown to format as a 2-column table
+    table_html = "<table style='width:100%; border-collapse: collapse;'>"
+    for i in range(0, len(details_table), 2):
+        table_html += "<tr>"
+        for j in range(2):
+            if i + j < len(details_table):
+                key = details_table[i + j]["Property"]
+                value = details_table[i + j]["Value"]
+                table_html += f"<td style='padding: 8px; border: 1px solid black;'><b>{key}</b></td>"
+                table_html += f"<td style='padding: 8px; border: 1px solid black;'>{value}</td>"
+        table_html += "</tr>"
+    table_html += "</table>"
 
-    # Show Figures for Selected Clock
-        # Show Figures for Selected Clock
-    st.subheader(f"📊 Figures for {selected_clock}")
+    st.markdown(table_html, unsafe_allow_html=True)
 
-    figure_files, figure_folder = get_figures(selected_clock)
-
-    if figure_files:
-        vif_figs = [f for f in figure_files if "vif" in f.lower()]
-        if vif_figs:
-            st.markdown(
-                """
-                **Variance Inflation Factor (VIF)**
-                
-                - **VIF > 5** → Moderate collinearity.
-                - **VIF > 10** → Strong collinearity.
-                - **VIF > 20** → Very high correlation affecting model performance.
-                
-                The proportions indicate the percentage of features exceeding these thresholds.
-                """
-            )
-
-        # Display each figure in its own row for consistency
-        for fig_file in figure_files:
-            fig_path = os.path.join(figure_folder, fig_file)
-            image = Image.open(fig_path)
-
-            # Use full width for uniform display
-            st.image(image, caption=fig_file, use_container_width=True)
-
-
-    else:
-        st.warning("⚠️ No figures available for this clock yet.")
+else:
+    st.warning("No clocks available with the selected filters.")
