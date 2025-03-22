@@ -1,8 +1,3 @@
-<<<<<<< HEAD
-
-
-=======
->>>>>>> 8a4a5f3 (Fixed feature count formatting (no decimals) and removed commas from Year Published)
 
 # streamlit run test_version.py --server.enableCORS false --server.enableXsrfProtection false
 # # year bug (2,020) - fixed
